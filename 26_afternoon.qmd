@@ -1,0 +1,27 @@
+---
+title: "Clase 1 - R series de Tiempo"
+author: "Taban Biel Ngunar"
+date: 2026-01-26
+format: html
+editor: visual
+---
+
+## **Ngundeng** 
+
+```{r}
+# messages: False
+
+library(tidyverse)
+library(fpp3)
+```
+
+-   Para ejecutar
+
+```         
+```
+
+*Cursiva*
+
+## 
+
+\
