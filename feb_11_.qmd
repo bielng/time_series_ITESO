@@ -1,0 +1,9 @@
+```{r}
+title: "feb_06"
+format: html 
+```
+
+```{r}
+## Mean method
+## the forecasting in the historical mean of the series.....
+```
