@@ -274,11 +274,193 @@ imports <- tidyquant::tq_get(
   
   
 ) |> 
-  mutate(date = yearmonth(date)
+  mutate(date = yearmonth(date) #
   ) |> as_tsibble(
     index = date)
 
 imports
 
+```
+
+```{r}
+1. Se selecciona `get = "economic.data"` para obtener datos económicos de la base de datos FRED (Federal Reserve Economic Data).
+2. Se convierte la columna `date` a un formato de fecha utilizando `yearmonth()` de la librería `lubridate`, lo que facilita el manejo de series temporales mensuales.
+
+## Instrucciones 
+
+Realizar un pronostico a 14 meses (hasta diciembre de 2025). Realizar el flujo de pronóstico completo, desde la exploración de los datos, el ajuste de modelos y la evaluación de su desempeño.
+```
+
+```{r}
+
+h = 14 
+imports_train <- imports |> 
+  slice(1:(n() - h))
+
+imports_train
+```
+
+```{r}
+imports_train |> 
+  autoplot(price) +
+  labs(
+    title = "Time series plot of the Auto Imports of Mexico",
+    y = "Imports"
+  )
+```
+```{r}
+library(plotly)
+library(fpp3)
+```
+
+```{r}
+imports_train |> 
+  gg_season(price) |> 
+  ggplotly()
+```
+
+
+
+
+```{r}
+imports_train |> 
+  autoplot(log(price))
+```
+```{r}
+
+```
+
+
+```{r}
+price_lambda <- imports_train |> 
+  features(price, guerrero) |> 
+  pull()
+price_lambda
+```
+
+```{r}
+
+
+model_fit <- imports_train |> 
+  model(
+    media = MEAN(box_cox(price, price_lambda)),
+    naive = NAIVE(box_cox(price, price_lambda)),
+    snaive = SNAIVE(box_cox(price, price_lambda)),
+    drift = RW(box_cox(price, price_lambda) ~ drift())
+  )
+
+model_fit
+```
+```{r}
+imports_train |> 
+  autoplot(box_cox(price, price_lambda))
+```
+```{r}
+imports_train |> 
+  model(
+    stl = STL(box_cox(price, price_lambda), robust = TRUE)
+  ) |> 
+    components() |> 
+  autoplot()
+```
+```{r}
+imports_fit <- imports_train |> 
+  model(
+    media = MEAN(box_cox(price, price_lambda)),
+    naive = NAIVE(box_cox(price, price_lambda)),
+    snaive = SNAIVE(box_cox(price, price_lambda)),
+    drift = RW(box_cox(price, price_lambda) ~ drift())
+  )
+
+imports_fit
+```
+
+```{r}
+imports_aug <- imports_fit |> 
+  augment()
+
+
+imports_fit |>
+  select(media) |>
+  gg_tsresiduals() +
+  labs(
+    title = "Residuos del modelo media"
+  )
+```
+
+```{r}
+imports_aug |> 
+  ggplot(aes(x = date, y = .innov)) + 
+  geom_line() +
+  facet_wrap(vars(.model), scales = "free_y") + 
+  labs(
+    title = "Innovaciones de los modelos benchmark"
+  )
+```
+
+```{r}
+imports_fit_stl <- imports_train |> 
+  model(
+    stlf = decomposition_model(
+      STL(box_cox(price, price_lambda), robust = TRUE),
+      SNAIVE(season_year),
+      RW(season_adjust ~ drift())
+    )
+  )
+
+imports_fit_stl
+```
+
+
+```{r}
+imports_fit_stl |> 
+  gg_tsresiduals()
+```
+```{r}
+imports_fit_todos <- imports_train |> 
+  model(
+    media = MEAN(box_cox(price, price_lambda)),
+    naive = NAIVE(box_cox(price, price_lambda)),
+    snaive = SNAIVE(box_cox(price, price_lambda)),
+    drift = RW(box_cox(price, price_lambda) ~ drift()),
+    stlf = decomposition_model(
+      STL(box_cox(price, price_lambda), robust = TRUE),
+      SNAIVE(season_year),
+      RW(season_adjust ~ drift())
+    )
+  )
+imports_fit_todos
+```
+
+
+```{r}
+imports_fc_todos <- imports_fit_todos |> 
+  forecast(h = "5 years")
+
+imports_fc_todos
+```
+```{r}
+imports_fc_todos |> 
+  autoplot(imports) +
+  facet_wrap(vars(.model), scales = "free_y")
+```
+
+```{r}
+imports_fc_todos |> 
+  autoplot(imports, level = NULL, linewidth = 1)
+```
+```{r}
+imports_fc_todos |> 
+  accuracy(imports) |> 
+  arrange(RMSE)
+```
+
+```{r}
+imports |> 
+  model(
+    drift = RW(box_cox(price, price_lambda))
+  ) |> 
+    forecast(h = "3 years") |>
+    autoplot(imports)
 ```
 
