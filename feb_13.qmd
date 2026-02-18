@@ -213,6 +213,59 @@ gas_train |>
 ```
 
 ```{r}
+gas_lambda <- gas_train |> 
+  features(Gas, guerrero) |> 
+  pull()
+
+gas_lambda
+```
+```{r}
+gas_train |> 
+  autoplot(box_cox(Gas, gas_lambda))
+```
+
+```{r}
+gas_train |> 
+  model(
+    stl = STL(box_cox(Gas, gas_lambda), robust = TRUE)
+  ) |> 
+    components() |> 
+  autoplot()
+```
+```{r}
+gas_fit <- gas_train |> 
+  model(
+    media = MEAN(box_cox(Gas, gas_lambda)),
+    naive = NAIVE(box_cox(Gas, gas_lambda)),
+    snaive = SNAIVE(box_cox(Gas, gas_lambda)),
+    drift = RW(box_cox(Gas, gas_lambda) ~ drift())
+  )
+
+gas_fit
+```
+```{r}
+gas_aug <- gas_fit |> 
+  augment()
+
+gas_fit |> 
+  select(media) |>
+  gg_tsresiduals() +
+  labs(
+    title = "Residuos del modelo media"
+  )
+```
+
+```{r}
+gas_aug |> 
+  ggplot(aes(x = Quarter, y = .innov)) + 
+  geom_line() +
+  facet_wrap(vars(.model), scales = "free_y") + 
+  labs(
+    title = "Innovaciones de los modelos benchmark"
+  )
+```
+
+```{r}
 
 ```
 
