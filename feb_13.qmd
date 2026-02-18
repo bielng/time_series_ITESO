@@ -1,0 +1,218 @@
+---
+title: "Ngundeng Analytics Technologies - Time Series Analysis of the Real GDP of Mexico"
+format: html
+---
+
+```{r}
+library(tidyverse)
+library(lubridate)
+library(fpp3)
+```
+```{r}
+#Warning: x = 'NGDPRNSAXDCSSD', get = 'economic.data': Error in getSymbols.FRED(Symbols = "NGDPRNSAXDCSSD", env = <environment>, : Unable to import “NGDPRNSAXDCSSD”.
+#cannot open the connection
+```
+
+```{r}
+gdp <- gdp |> 
+  mutate(date = yearquarter(date)) |> 
+  as_tsibble(
+    index = date,
+    key   = symbol
+  )
+
+gdp
+```
+
+```{r}
+gdp_train <- gdp |> 
+  filter_index(. ~ "2021 Q4") |>
+  as_tsibble(index = date, key = symbol)
+
+gdp_train
+
+```
+
+```{r}
+p <- gdp_train |> 
+  autoplot(price) +
+  labs(
+    title = "Time series plot of the Real GDP for Mexico",
+    y = "GDP"
+  )
+ 
+ggplotly(p, dynamicTicks = TRUE) |> 
+  rangeslider()
+```
+
+```{r}
+gdp_train |> 
+  gg_season(price) |> 
+  ggplotly()
+```
+
+```{r}
+gdp_train |> 
+  model(stl = STL(price, robust = TRUE)) |> 
+  components() |> 
+  autoplot() |> 
+  ggplotly()
+```
+
+```{r}
+gdp_train |> 
+  autoplot(log(price)) +
+  ggtitle("Log of the Real GDP of Mexico")
+```
+
+```{r}
+gdp_train |> 
+  model(stl = STL(log(price) ~ season(window = "periodic"), robust = TRUE)) |> 
+  components() |> 
+  autoplot() |> 
+  ggplotly()
+```
+
+```{r}
+gdp_fit <- gdp_train |> 
+  model(
+    snaive = SNAIVE(log(price)),
+    drift  = RW(log(price) ~ drift())
+  )
+```
+
+```{r}
+gdp_fit |> 
+  select(snaive) |> 
+  gg_tsresiduals() +
+  ggtitle("Residuals Diagnostics for the Seasonal Naïve Model")
+```
+
+```{r}
+gdp_fit |> 
+  select(drift) |> 
+  gg_tsresiduals() +
+  ggtitle("Residuals Diagnostics for the Drift Model")
+```
+
+```{r}
+gdp_fit |> 
+  augment() |> 
+  features(.innov, ljung_box, lag = 24, dof = 0)
+```
+
+```{r}
+gdp_train_accu <- accuracy(gdp_fit) |> 
+  arrange(MAPE)
+gdp_train_accu |> 
+  select(symbol:.type, MAPE, RMSE, MAE, MASE)
+```
+
+```{r}
+gdp_fit_dcmp <- gdp_train |> 
+      model(
+        stlf = decomposition_model(
+          STL(log(price) ~ season(window = "periodic"), robust = TRUE),
+          RW(season_adjust ~ drift())
+        )
+      )
+
+gdp_fit_dcmp
+```
+
+```{r}
+gdp_fit <- gdp_fit |> 
+  left_join(gdp_fit_dcmp)
+```
+
+```{r}
+gdp_fit |> 
+  accuracy() |> 
+  select(symbol:.type, MAPE, RMSE, MAE, MASE) |> 
+  arrange(MAPE)
+```
+
+```{r}
+gdp_fit |> 
+  select(stlf) |> 
+  gg_tsresiduals()
+```
+
+```{r}
+gdp_fit |> 
+  augment() |> 
+  features(.innov, ljung_box)
+```
+
+```{r}
+
+gdp_h_fc <- 8
+gdp_fc <- gdp_fit |> 
+  forecast(h = gdp_h_fc)
+
+gdp_fc
+```
+
+```{r}
+gdp_fc |> 
+  autoplot(gdp) +
+  facet_wrap(~.model, ncol = 1)
+```
+
+```{r}
+gdp_fc |> 
+  filter(.model == "stlf") |> 
+  autoplot(gdp)
+```
+
+```{r}
+gdp_fc |> 
+  accuracy(gdp) |> 
+  select(.model:.type, MAPE, RMSE, MAE, MASE) |> 
+  arrange(MAPE)
+```
+
+```{r}
+gdp_fit2 <- gdp |> 
+  model(
+    stlf = decomposition_model(
+          STL(log(price) ~ season(window = "periodic"), robust = TRUE),
+          RW(season_adjust ~ drift())
+        )
+  )
+gdp_fit2
+```
+
+```{r}
+gdp_fc_fut <- gdp_fit2 |> 
+  forecast(h = gdp_h_fc)
+gdp_fc_fut
+```
+
+```{r}
+gdp_fc_fut |> 
+  autoplot(gdp) +
+  facet_wrap(~.model, ncol = 1)
+```
+```{r}
+## feb 18th exercise:
+library(tidyverse)
+library(fpp3)
+```
+
+```{r}
+gas_train <- aus_production |> 
+  filter_index(. ~ "2007 Q2")
+
+gas_train
+```
+
+```{r}
+gas_train |> 
+  autoplot(Gas)
+```
+
+```{r}
+
+```
+
