@@ -1,0 +1,49 @@
+---
+title: "feb20"
+format: html
+---
+
+```{r}
+library(tidyverse)
+library(fpp3)
+```
+
+```{r}
+tsibble |>
+  model(
+    baseline = decomposition_model(
+      STL(y ~ trend(window = NULL) + season(window = "periodic"), robust = TRUE),
+      RW(season_adjust ~ drift()),
+      SNAIVE(season_year)
+    )
+  )
+```
+
+```{r}
+algeria_economy <- global_economy |>
+  filter(Country == "Algeria")
+  
+algeria_economy |> 
+  autoplot(Exports)
+```
+
+```{r}
+alg_fit <- algeria_economy |>
+  model(
+    SES = ETS(Exports ~ error("A") + trend("N") + season("N")),
+    Naive = NAIVE(Exports)
+  )
+
+alg_fc <- alg_fit |>
+  forecast(h = 5)
+```
+
+```{r}
+bra_economy <- global_economy |> 
+  filter(Code == "BRA") |> 
+  mutate(Pop = Population / 1e6)
+
+bra_economy |> 
+  autoplot(Pop)
+```
+
